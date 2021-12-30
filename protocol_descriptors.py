@@ -1,4 +1,5 @@
 from crc import CrcCalculator, Crc16
+import socket
 
 MESSAGE_TYPES = {'file_request': 1,
                  'file_request_successful': 2, 
@@ -104,3 +105,16 @@ def check_crc_received_message(message):
     else:
         print("Crc is not matching")
         return False
+
+# Wait for response and return data
+def wait_for_response(sock, timeout=SOCKET_TIMEOUT):
+    sock.settimeout(timeout)
+    while True:
+        try:
+            data, addr = sock.recvfrom(MAX_BUFFER_SIZE) # Buffer 1024 bytes
+            if not data: break
+        except socket.timeout as e:
+            return False, []
+
+        # Return received data
+        return True, data

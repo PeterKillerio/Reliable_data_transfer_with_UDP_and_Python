@@ -6,6 +6,9 @@ import sys
 from crc import CrcCalculator, Crc16
 from protocol_descriptors import MESSAGE_TYPES, FILE_REQUEST_SUCCESSFUL_BODY_SIZE, FILE_REQUEST_UNSUCCESSFUL_BODY_SIZE, HEADER_SIZE, FILE_REQUEST_BODY_SIZE, FILE_START_TRANSFER_BODY_SIZE, FILE_DATA_TRANSFER_ACKNOWLEDGE, FILE_DATA_TRANSFER_ACKNOWLEDGE_WINDOW_MAX_NUM_SIZE, FILE_DATA_TRANSFER_ACKNOWLEDGE_WINDOW_HEADER_START_IDX, FILE_DATA_MAX_TRANSFER_SIZE, FILE_DATA_HEADER_BODY_LEN_START_IDX, FILE_DATA_HEADER_MAX_BODY_LEN, FILE_DATA_HEADER_TRANSFER_WINDOW_START_IDX, FILE_DATA_HEADER_TRANSFER_WINDOW_MAX_LEN, FILE_REQUEST_BODY_SIZE_FILENAME_LEN,BODY_END_CRC_LENGTH
 from protocol_descriptors import pop_zeros, get_crc, append_crc_to_message, check_crc_received_message
+
+PARSE_RETURNS = {"request_successful": 0, "request_unsuccessful": 1, "wrong_message_type": 2, "wrong_crc": 3}
+
 class UDPFile_receiver:
     def __init__(self, receiver_directory, path_to_file):
         self.receiver_directory = receiver_directory
@@ -36,15 +39,18 @@ class UDPFile_receiver:
             file was found else return False '''
 
         header, body = self.parse_data(data)
+        ret_dict = {}
 
         message_type = int(str(chr(header[0])))
         if ord(chr(message_type)) != MESSAGE_TYPES['file_request_successful'] and ord(chr(message_type )) != MESSAGE_TYPES['file_request_unsuccessful'] : 
             print(f'ERROR in parse_file_request_response(): Message type {ord(chr(message_type))} doesn\'t match {MESSAGE_TYPES["file_request_successful"]} or  {MESSAGE_TYPES["file_request_unsuccessful"]}')
-            return False
+            ret_dict["return"] = PARSE_RETURNS["wrong_message_type"]
+            return ret_dict
 
         # Check CRC
         if not check_crc_received_message(data):
-            return -1
+            ret_dict["return"] = PARSE_RETURNS["wrong_crc"]
+            return ret_dict
 
         file_size = '0'
         print(f"body: {body}")
@@ -57,9 +63,11 @@ class UDPFile_receiver:
         self.file_byte_size = int(file_size)
 
         if ord(chr(message_type )) == MESSAGE_TYPES['file_request_successful']:
-            return True
+            ret_dict["return"] = PARSE_RETURNS["request_successful"]
+            return ret_dict
         else:
-            return False
+            ret_dict["return"] =PARSE_RETURNS["request_unsuccessful"]
+            return ret_dict
 
     def parse_file_data(self, data):
         ''' Parse received file data from sender application
