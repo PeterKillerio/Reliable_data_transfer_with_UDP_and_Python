@@ -6,11 +6,13 @@ import struct
 import numpy as np
 from protocol_descriptors import MESSAGE_TYPES, FILE_REQUEST_SUCCESSFUL_BODY_SIZE, FILE_REQUEST_UNSUCCESSFUL_BODY_SIZE, HEADER_SIZE, FILE_DATA_TRANSFER_ACKNOWLEDGE_WINDOW_MAX_NUM_SIZE, FILE_DATA_TRANSFER_ACKNOWLEDGE_WINDOW_HEADER_START_IDX, FILE_DATA_HEADER_MAX_BODY_LEN, FILE_DATA_HEADER_BODY_LEN_START_IDX, FILE_DATA_HEADER_TRANSFER_WINDOW_START_IDX, FILE_DATA_HEADER_TRANSFER_WINDOW_MAX_LEN, FILE_REQUEST_BODY_SIZE_FILENAME_LEN,BODY_END_CRC_LENGTH
 from protocol_descriptors import pop_zeros, get_crc, append_crc_to_message, check_crc_received_message
+from protocol_descriptors import PARSE_RETURNS
 
 class UDPFile_sender:
     def __init__(self):
         # Constants
         self.header_size = HEADER_SIZE # Bytes
+        self.file_data = []
     
     def parse_data(self, data):
         ''' Parse data to int array and return header and body. '''
@@ -27,38 +29,65 @@ class UDPFile_sender:
             to body and header -> extract file name and return it. '''
 
         header, body = self.parse_data(data)
+        ret_dict = {}
+
+        # NET DERPER CHANGES FIRST NUM TO CHAR
+        if not str(chr(header[0])).isnumeric():
+            ret_dict["return"] = PARSE_RETURNS["wrong_message_type"]
+            return ret_dict
 
         # Check message type
         message_type = int(str(chr(int(header[0]))))
        # print(f"TESTING MESSAGE TYPE : {message_type}, before: {header[0]}")
         if message_type != MESSAGE_TYPES['file_request']: 
             print(f'ERROR in parse_file_request(): Message type {message_type} doesn\'t match {MESSAGE_TYPES["file_request"]}')
-            return False
+            ret_dict["return"] = PARSE_RETURNS["wrong_message_type"]
+            return ret_dict
         # Check CRC
         if not check_crc_received_message(data):
-            return False
+            ret_dict["return"] = PARSE_RETURNS["wrong_crc"]
+            return ret_dict
 
         file_path = ''
         for body_int_char in body:
             if body_int_char == 0: break
             file_path = file_path + chr(body_int_char)
-        return file_path
+        
+        ret_dict["return"] = PARSE_RETURNS["request_successful"]
+        ret_dict["file_path"] = file_path
+        return ret_dict
+
     def parse_start_transfer(self, data):
         header, body = self.parse_data(data)
+        ret_dict = {}
+
+        # NET DERPER CHANGES FIRST NUM TO CHAR
+        if not str(chr(header[0])).isnumeric():
+            ret_dict["return"] = PARSE_RETURNS["wrong_message_type"]
+            return ret_dict
 
         message_type = int(str(chr(header[0])))
         if message_type != MESSAGE_TYPES['file_start_transfer']: 
             print(f'ERROR in parse_start_transfer(): Message type {message_type} doesn\'t match {MESSAGE_TYPES["file_start_transfer"]}')
-            return False
+            ret_dict["return"] = PARSE_RETURNS["wrong_message_type"]
+            return ret_dict
         
         # Check CRC
         if not check_crc_received_message(data):
-            return False
+            ret_dict["return"] = PARSE_RETURNS["wrong_crc"]
+            return ret_dict
 
-        return True
+        ret_dict["return"] = PARSE_RETURNS["request_successful"]
+        return ret_dict
 
     def parse_file_acknowledge(self, data): 
         header, body = self.parse_data(data)
+        ret_dict = {}
+
+        # NET DERPER CHANGES FIRST NUM TO CHAR
+        if not str(chr(header[0])).isnumeric():
+            ret_dict["return"] = PARSE_RETURNS["wrong_message_type"]
+            return ret_dict
 
         message_type = int(str(chr(header[0])))
         print(f"message_type: {message_type}")
@@ -67,11 +96,13 @@ class UDPFile_sender:
 
         if message_type != MESSAGE_TYPES['file_data_acknowledge']: 
             print(f'ERROR in parse_file_acknowledge(): Message type {message_type} doesn\'t match {MESSAGE_TYPES["file_data_acknowledge"]}')
-            return False, 0
+            ret_dict["return"] = PARSE_RETURNS["wrong_message_type"]
+            return ret_dict
         
         # Check CRC
         if not check_crc_received_message(data):
-            return False, 0
+            ret_dict["return"] = PARSE_RETURNS["wrong_crc"]
+            return ret_dict
 
         # Parse window idx
         transfer_window_idx = '0'
@@ -83,9 +114,14 @@ class UDPFile_sender:
             print(f"transfer_window_idx: {transfer_window_idx}")
         transfer_window_idx = int(transfer_window_idx)
 
-
-        return valid, transfer_window_idx
+        ret_dict["return"] = PARSE_RETURNS["request_successful"]
+        ret_dict["transfer_window_idx"] = transfer_window_idx
+        return ret_dict
         
+    def load_file_data(self):
+        with open(self.path_to_file, 'rb') as file:
+            self.file_data = file.read()
+        return
 
     def check_file_existence(self, path_to_file):
         print(f"path_to_file: {path_to_file}")
@@ -100,7 +136,9 @@ class UDPFile_sender:
         
         # Get file size
         self.file_byte_size = os.path.getsize(self.path_to_file)
+        print(f"GETTING FILE SIZE OF : {self.path_to_file}... its: {os.path.getsize(self.path_to_file)}")
         
+
         ## Write header
         header = self.get_empty_header(header_byte_size=self.header_size)
         header[0] = ord(str(MESSAGE_TYPES['file_request_successful']))
@@ -200,6 +238,7 @@ class UDPFile_sender:
         
     def read_save_binary_data(self, path_to_file):
         # Get file size and initialize an empty array for each byte
+        print(f"GETTING FILE SIZE OF : {path_to_file}... its: {os.path.getsize(path_to_file)}")
         self.file_byte_size = os.path.getsize(path_to_file)
         self.data = np.zeros(1,self.file_byte_size)
 

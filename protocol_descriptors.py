@@ -9,6 +9,9 @@ MESSAGE_TYPES = {'file_request': 1,
                  'file_data_acknowledge': 6}
                  # THERE IS CURRENLY LIMIT FOR 9 MESSAGE TYPES
 
+PARSE_RETURNS = {"request_successful": 0, "request_unsuccessful": 1, "wrong_message_type": 2, "wrong_crc": 3}
+
+
 HEADER_SIZE = 16
 BODY_END_CRC_LENGTH = 16
 FILE_REQUEST_BODY_SIZE_FILENAME_LEN = 256
@@ -16,7 +19,7 @@ FILE_REQUEST_BODY_SIZE = FILE_REQUEST_BODY_SIZE_FILENAME_LEN+BODY_END_CRC_LENGTH
 FILE_REQUEST_SUCCESSFUL_BODY_SIZE = 64+BODY_END_CRC_LENGTH
 FILE_REQUEST_UNSUCCESSFUL_BODY_SIZE = 8+BODY_END_CRC_LENGTH
 FILE_START_TRANSFER_BODY_SIZE = 8+BODY_END_CRC_LENGTH
-FILE_DATA_MAX_TRANSFER_SIZE = 1008
+FILE_DATA_MAX_TRANSFER_SIZE = 128-BODY_END_CRC_LENGTH
 FILE_DATA_MAX_BODY_SIZE = FILE_DATA_MAX_TRANSFER_SIZE+BODY_END_CRC_LENGTH
 FILE_DATA_TRANSFER_ACKNOWLEDGE = 8+BODY_END_CRC_LENGTH
 FILE_DATA_HEADER_TRANSFER_WINDOW_START_IDX = 2
@@ -28,7 +31,8 @@ FILE_DATA_TRANSFER_ACKNOWLEDGE_WINDOW_HEADER_START_IDX = 2
 MAX_BUFFER_SIZE = 2*(HEADER_SIZE+FILE_DATA_MAX_BODY_SIZE)
 
 #
-SOCKET_TIMEOUT = 10
+SOCKET_TIMEOUT = 5 # START/DEBUG
+SOCKET_FAST_TIMEOUT = 0.1
 
 def pop_zeros(items):
     #print(f"items: {items}")
@@ -96,7 +100,12 @@ def check_crc_received_message(message):
         #print(f"crc_int_char: {crc_int_char}")
         parsed_crc_value = parsed_crc_value + str(chr(crc_int_char))
     #print(f"parsed_crc_value: {parsed_crc_value}")
-    parsed_crc_value = int(parsed_crc_value)
+
+    try:
+        parsed_crc_value = int(parsed_crc_value)
+    except:
+        print("Crc is not numeric or valid")
+        return False
 
     print(f"crc_value == parsed_crc_value: {crc_value} == {parsed_crc_value}")
     if crc_value == parsed_crc_value:

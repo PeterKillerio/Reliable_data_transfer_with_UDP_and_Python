@@ -10,8 +10,8 @@ DEBUG = False
 
 # Client IP and connection constants
 UDP_IP = "127.0.0.1"
-UDP_RECEIVE_PORT = 5013#5006
-UDP_SEND_PORT = 5010#5005
+UDP_RECEIVE_PORT = 5006#5013#5006
+UDP_SEND_PORT = 5005#5010#5005
 
 # Establish a connection
 print(f"UDP target IP: {UDP_IP}")
