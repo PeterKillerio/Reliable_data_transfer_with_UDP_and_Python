@@ -10,13 +10,13 @@ import select
 
 
 path_to_receiver_directory = 'receiver_client_filesystem/'
-path_to_server_file = 'C:/Users/peter/Desktop/CTU/Fifth_semester/KDS/cvut_kds_semestralni_projekt/python_implementation/v_2_miro_basic/git/CTU_KDS_reliable_udp_file_transfer/sender_server_filesystem/bit.bmp'#'example.jpg'
+path_to_server_file = 'C:/Users/peter/Desktop/CTU/Fifth_semester/KDS/cvut_kds_semestralni_projekt/python_implementation/v_2_miro_basic/git/CTU_KDS_reliable_udp_file_transfer/sender_server_filesystem/example.jpg'#'example.jpg'
 DEBUG = False
 
 # Server IP
 UDP_IP = "127.0.0.1"
-UDP_RECEIVE_PORT = 5011#5005
-UDP_SEND_PORT = 5012 #5006
+UDP_RECEIVE_PORT =5011 #5011#5005
+UDP_SEND_PORT = 5012 #5012#5006
 print(f"UDP target IP: {UDP_IP}")
 print(f"UDP send port: {UDP_SEND_PORT}, UDP receive port: {UDP_RECEIVE_PORT}" )
 
@@ -162,7 +162,7 @@ with open(f'{path_to_receiver_directory}/{UDPFile.file_name}', 'wb') as file:
                 elif ret_dict["return"] == PARSE_RETURNS["wrong_crc"] or not valid:
                     CURRENT_STATE = receiver_states["send_acknowledge_current"]
                     continue
-                elif ret_dict["return"] == PARSE_RETURNS["request_successful"]:
+                elif ret_dict["return"] == PARSE_RETURNS["request_successful"] and parsed_transfer_window_idx == transfer_window_idx:
                     file.write(bytes(body[:body_len]))
                     total_byte_idx = FILE_DATA_MAX_TRANSFER_SIZE*transfer_window_idx + (len(body)-1)
                     if total_byte_idx+1 >= UDPFile.file_byte_size:

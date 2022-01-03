@@ -1,4 +1,5 @@
-from crc import CrcCalculator, Crc16
+from crc import CrcCalculator, Crc64
+import numpy as np
 import socket
 
 MESSAGE_TYPES = {'file_request': 1,
@@ -54,9 +55,9 @@ def parse_data_one(data, int_format=True):
     return data_array
     
 def get_crc(bytes_data):
-    ''' Calculates crc16 and returns int crc value
+    ''' Calculates Crc64 and returns int crc value
         most likely of limit python int16 ~10 digits '''
-    crc_calculator = CrcCalculator(Crc16.CCITT, True)
+    crc_calculator = CrcCalculator(Crc64.CRC64, True)
     #print(f"crc calculated from: {bytes_data}")
     return crc_calculator.calculate_checksum(bytes_data) 
 
@@ -69,16 +70,12 @@ def append_crc_to_message(message):
     
     print(f"message len at the beginning: {len(message)}")
     # write filename
-    crc_str_value = str(crc_value)
-    print(f"SENDING CRC: {crc_str_value}")
-    if not len(crc_str_value) <= BODY_END_CRC_LENGTH: 
-        print(f"ERROR: ERROR in append_crc_to_message(), name {crc_str_value} len: {len(crc_str_value)} too long for body")
-        return False
+    crc_byte_value = crc_value.to_bytes(BODY_END_CRC_LENGTH,'big')
+
     start_idx_crc = len(message) - BODY_END_CRC_LENGTH
-    for crc_char_idx, crc_char in enumerate(crc_str_value):
-        message[start_idx_crc+crc_char_idx] = ord(crc_char)
-    # write crc at the end of the body
-    #print(f"message len at the end {len(message)}")
+    for crc_byte_idx in range(BODY_END_CRC_LENGTH):
+        message[start_idx_crc+crc_byte_idx] = crc_byte_value[crc_byte_idx]
+
     return message
 
 def check_crc_received_message(message):
@@ -87,33 +84,36 @@ def check_crc_received_message(message):
     and compares it to the crc in the message. '''
     # Crc value from stripped message
     crc_value = get_crc(bytes(message[:-BODY_END_CRC_LENGTH]))
-    #print(f"calculated crc: {crc_value}")
-    # Get parsed crc value 
-    parsed_crc_value = '0'
+    crc_byte_value = crc_value.to_bytes(BODY_END_CRC_LENGTH,'big')
+
+    # Read crc byte data from message
     crc_start_idx = len(message) - BODY_END_CRC_LENGTH
-    crc_body_info = message[crc_start_idx:]
-    #print(f"crc_body_info len: {len(crc_body_info)}")
-    crc_body_info = parse_data_one(data=crc_body_info)
-    for crc_int_char in crc_body_info:
-        if crc_int_char == 0:
-            break
-        #print(f"crc_int_char: {crc_int_char}")
-        parsed_crc_value = parsed_crc_value + str(chr(crc_int_char))
-    #print(f"parsed_crc_value: {parsed_crc_value}")
+    crc_body_body_byte_value = message[crc_start_idx:] #
 
-    try:
-        parsed_crc_value = int(parsed_crc_value)
-    except:
-        print("Crc is not numeric or valid")
-        return False
+    if  isinstance(crc_body_body_byte_value, bytes):
+        pass
+    elif isinstance(crc_body_body_byte_value, np.ndarray):
+        print(f"arr.dtype: {crc_body_body_byte_value.dtype}")
+        print(f"crc_body_body_byte_value len: {len(crc_body_body_byte_value)}")
+        crc_body_body_byte_value = (crc_body_body_byte_value.astype('int8')).tobytes()
+        print(f"** crc_body_body_byte_value len: {len(crc_body_body_byte_value)}")
+    else:
+        print("ERROR: BAD TYPE OF CRC IN check_crc_received_message()")
+        exit() 
 
-    print(f"crc_value == parsed_crc_value: {crc_value} == {parsed_crc_value}")
-    if crc_value == parsed_crc_value:
+    print(f"crc_body_body_byte_value: {crc_body_body_byte_value}")
+    print(f"crc_body_body_byte_value type: {type(crc_body_body_byte_value)}")
+    # print(f"crc_body_body_byte_value type: {type(crc_body_body_byte_value.tobytes())}")
+    print(f"crc_byte_value type: {type(crc_byte_value)}")
+
+    print(f"crc_value == parsed_crc_value: {crc_byte_value} == {crc_body_body_byte_value}")
+    if crc_byte_value == crc_body_body_byte_value:
         print("Crc is matching")
         return True
     else:
         print("Crc is not matching")
         return False
+    
 
 # Wait for response and return data
 def wait_for_response(sock, timeout=SOCKET_TIMEOUT):
