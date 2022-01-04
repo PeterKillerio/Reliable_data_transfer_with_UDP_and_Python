@@ -1,4 +1,5 @@
 from crc import CrcCalculator, Crc64
+import hashlib
 import numpy as np
 import socket
 
@@ -7,7 +8,8 @@ MESSAGE_TYPES = {'file_request': 1,
                  'file_request_unsuccessful': 3,
                  'file_start_transfer': 4,
                  'file_data_sent': 5,
-                 'file_data_acknowledge': 6}
+                 'file_data_acknowledge': 6,
+                 'file_hash': 7}
                  # THERE IS CURRENLY LIMIT FOR 9 MESSAGE TYPES
 
 PARSE_RETURNS = {"request_successful": 0, "request_unsuccessful": 1, "wrong_message_type": 2, "wrong_crc": 3}
@@ -15,18 +17,21 @@ PARSE_RETURNS = {"request_successful": 0, "request_unsuccessful": 1, "wrong_mess
 
 HEADER_SIZE = 16
 BODY_END_CRC_LENGTH = 16
+HASH_LENGTH = 16
 FILE_REQUEST_BODY_SIZE_FILENAME_LEN = 256
 FILE_REQUEST_BODY_SIZE = FILE_REQUEST_BODY_SIZE_FILENAME_LEN+BODY_END_CRC_LENGTH
 FILE_REQUEST_SUCCESSFUL_BODY_SIZE = 64+BODY_END_CRC_LENGTH
 FILE_REQUEST_UNSUCCESSFUL_BODY_SIZE = 8+BODY_END_CRC_LENGTH
 FILE_START_TRANSFER_BODY_SIZE = 8+BODY_END_CRC_LENGTH
-FILE_DATA_MAX_TRANSFER_SIZE = 128-BODY_END_CRC_LENGTH
+FILE_DATA_MAX_TRANSFER_SIZE = 1024-BODY_END_CRC_LENGTH
 FILE_DATA_MAX_BODY_SIZE = FILE_DATA_MAX_TRANSFER_SIZE+BODY_END_CRC_LENGTH
 FILE_DATA_TRANSFER_ACKNOWLEDGE = 8+BODY_END_CRC_LENGTH
+FILE_DATA_HASH_MESSAGE_BODY_SIZE = HASH_LENGTH+BODY_END_CRC_LENGTH
 FILE_DATA_HEADER_TRANSFER_WINDOW_START_IDX = 2
 FILE_DATA_HEADER_TRANSFER_WINDOW_MAX_LEN = 6
 FILE_DATA_HEADER_BODY_LEN_START_IDX = 8
 FILE_DATA_HEADER_MAX_BODY_LEN = 8
+
 FILE_DATA_TRANSFER_ACKNOWLEDGE_WINDOW_MAX_NUM_SIZE = 6
 FILE_DATA_TRANSFER_ACKNOWLEDGE_WINDOW_HEADER_START_IDX = 2
 MAX_BUFFER_SIZE = 2*(HEADER_SIZE+FILE_DATA_MAX_BODY_SIZE)
@@ -53,7 +58,11 @@ def parse_data_one(data, int_format=True):
             data_array.append(byte)
 
     return data_array
-    
+
+def get_hash(bytes_data):
+    ''' Calculated MD5 hash and returns it '''
+    return hashlib.md5(bytes_data).digest()
+
 def get_crc(bytes_data):
     ''' Calculates Crc64 and returns int crc value
         most likely of limit python int16 ~10 digits '''

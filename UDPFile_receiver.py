@@ -4,8 +4,8 @@ from os import path
 import numpy as np
 import sys
 from crc import CrcCalculator, Crc16
-from protocol_descriptors import MESSAGE_TYPES, FILE_REQUEST_SUCCESSFUL_BODY_SIZE, FILE_REQUEST_UNSUCCESSFUL_BODY_SIZE, HEADER_SIZE, FILE_REQUEST_BODY_SIZE, FILE_START_TRANSFER_BODY_SIZE, FILE_DATA_TRANSFER_ACKNOWLEDGE, FILE_DATA_TRANSFER_ACKNOWLEDGE_WINDOW_MAX_NUM_SIZE, FILE_DATA_TRANSFER_ACKNOWLEDGE_WINDOW_HEADER_START_IDX, FILE_DATA_MAX_TRANSFER_SIZE, FILE_DATA_HEADER_BODY_LEN_START_IDX, FILE_DATA_HEADER_MAX_BODY_LEN, FILE_DATA_HEADER_TRANSFER_WINDOW_START_IDX, FILE_DATA_HEADER_TRANSFER_WINDOW_MAX_LEN, FILE_REQUEST_BODY_SIZE_FILENAME_LEN,BODY_END_CRC_LENGTH
-from protocol_descriptors import pop_zeros, get_crc, append_crc_to_message, check_crc_received_message
+from protocol_descriptors import HASH_LENGTH, MESSAGE_TYPES, FILE_REQUEST_SUCCESSFUL_BODY_SIZE, FILE_REQUEST_UNSUCCESSFUL_BODY_SIZE, HEADER_SIZE, FILE_REQUEST_BODY_SIZE, FILE_START_TRANSFER_BODY_SIZE, FILE_DATA_TRANSFER_ACKNOWLEDGE, FILE_DATA_TRANSFER_ACKNOWLEDGE_WINDOW_MAX_NUM_SIZE, FILE_DATA_TRANSFER_ACKNOWLEDGE_WINDOW_HEADER_START_IDX, FILE_DATA_MAX_TRANSFER_SIZE, FILE_DATA_HEADER_BODY_LEN_START_IDX, FILE_DATA_HEADER_MAX_BODY_LEN, FILE_DATA_HEADER_TRANSFER_WINDOW_START_IDX, FILE_DATA_HEADER_TRANSFER_WINDOW_MAX_LEN, FILE_REQUEST_BODY_SIZE_FILENAME_LEN,BODY_END_CRC_LENGTH
+from protocol_descriptors import pop_zeros, get_hash, get_crc, append_crc_to_message, check_crc_received_message
 from protocol_descriptors import PARSE_RETURNS
 
 class UDPFile_receiver:
@@ -16,6 +16,9 @@ class UDPFile_receiver:
         # Constants
         self.header_size = HEADER_SIZE # Bytes
         self.file_byte_size = 0
+        # HASH variables
+        self.calculated_hash = b'1'
+        self.received_hash = b'0'
 
     def parse_data(self, data, int_format=True):
         ''' Parse data to int array and return header and body. '''
@@ -31,6 +34,10 @@ class UDPFile_receiver:
 
         return header, body
 
+    def create_and_save_hashes(self, hash, file_data):
+        self.received_hash = hash
+        self.calculated_hash = get_hash(bytes_data=file_data)
+        return
 
     def parse_file_request_response(self, data):
         ''' Parse received file request response message from receiver application
@@ -72,6 +79,33 @@ class UDPFile_receiver:
         else:
             ret_dict["return"] =PARSE_RETURNS["request_unsuccessful"]
             return ret_dict
+
+    def parse_file_hash_response(self, data):
+        ''' Parse received file hash message from receiver application '''
+
+        header, body = self.parse_data(data)
+        ret_dict = {}
+
+        # NET DERPER CHANGES FIRST NUM TO CHAR
+        if not str(chr(header[0])).isnumeric():
+            ret_dict["return"] = PARSE_RETURNS["wrong_message_type"]
+            return ret_dict
+
+        message_type = int(str(chr(header[0])))
+        if ord(chr(message_type)) != MESSAGE_TYPES['file_hash']: 
+            print(f'ERROR in parse_file_hash_response(): Message type {ord(chr(message_type))} doesn\'t match {MESSAGE_TYPES["file_hash"]}')
+            ret_dict["return"] = PARSE_RETURNS["wrong_message_type"]
+            return ret_dict
+
+        # Check CRC
+        if not check_crc_received_message(data):
+            ret_dict["return"] = PARSE_RETURNS["wrong_crc"]
+            return ret_dict
+
+        hash = data[HEADER_SIZE:HEADER_SIZE+HASH_LENGTH]
+        ret_dict["return"] = PARSE_RETURNS["request_successful"]
+        ret_dict["hash"] = hash
+        return ret_dict
 
     def parse_file_data(self, data):
         ''' Parse received file data from sender application

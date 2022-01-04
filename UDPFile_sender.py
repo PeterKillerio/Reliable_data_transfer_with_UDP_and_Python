@@ -4,7 +4,7 @@ from os import path
 from crc import CrcCalculator, Crc16
 import struct
 import numpy as np
-from protocol_descriptors import MESSAGE_TYPES, FILE_REQUEST_SUCCESSFUL_BODY_SIZE, FILE_REQUEST_UNSUCCESSFUL_BODY_SIZE, HEADER_SIZE, FILE_DATA_TRANSFER_ACKNOWLEDGE_WINDOW_MAX_NUM_SIZE, FILE_DATA_TRANSFER_ACKNOWLEDGE_WINDOW_HEADER_START_IDX, FILE_DATA_HEADER_MAX_BODY_LEN, FILE_DATA_HEADER_BODY_LEN_START_IDX, FILE_DATA_HEADER_TRANSFER_WINDOW_START_IDX, FILE_DATA_HEADER_TRANSFER_WINDOW_MAX_LEN, FILE_REQUEST_BODY_SIZE_FILENAME_LEN,BODY_END_CRC_LENGTH
+from protocol_descriptors import MESSAGE_TYPES, FILE_DATA_HASH_MESSAGE_BODY_SIZE, HASH_LENGTH, FILE_REQUEST_SUCCESSFUL_BODY_SIZE, FILE_REQUEST_UNSUCCESSFUL_BODY_SIZE, HEADER_SIZE, FILE_DATA_TRANSFER_ACKNOWLEDGE_WINDOW_MAX_NUM_SIZE, FILE_DATA_TRANSFER_ACKNOWLEDGE_WINDOW_HEADER_START_IDX, FILE_DATA_HEADER_MAX_BODY_LEN, FILE_DATA_HEADER_BODY_LEN_START_IDX, FILE_DATA_HEADER_TRANSFER_WINDOW_START_IDX, FILE_DATA_HEADER_TRANSFER_WINDOW_MAX_LEN, FILE_REQUEST_BODY_SIZE_FILENAME_LEN,BODY_END_CRC_LENGTH
 from protocol_descriptors import pop_zeros, get_crc, append_crc_to_message, check_crc_received_message
 from protocol_descriptors import PARSE_RETURNS
 
@@ -221,19 +221,28 @@ class UDPFile_sender:
         # Create additional crc empty body
         crc_sufx = self.get_empty_body(body_byte_size=BODY_END_CRC_LENGTH)
         message_without_crc = np.concatenate((header, body), axis=None)
-        #print(f"A : message_without_crc len: {len(message_without_crc)}")
         message_without_crc = np.concatenate((message_without_crc, crc_sufx), axis=None)
-        #print(f"B : message_without_crc len: {len(message_without_crc)}")
-        
-
-        #print(f"TTTTTTT: {type(message_without_crc)}")
         message_with_crc = append_crc_to_message(message_without_crc)
-        # print(f"message_without_crc: {bytes(message_without_crc)}")
-        # print(f"message_with_crc: {bytes(message_with_crc)}")
-        #print(f"len message_without_crc: {len(bytes(message_without_crc))}")
-        #print(f"len message_with_crc: {len(bytes(message_with_crc))}")
-        ##print(f"len header: {len(header)}")
-        #print(f"len body: {len(body)}")
+        return message_with_crc
+    
+    def MESSAGE_hash(self, hash):
+        ''' This function returns byte array of full message
+        to be sent as response to ~ file exists in server file system '''
+        
+        ## Write header
+        header = self.get_empty_header(header_byte_size=self.header_size)
+        header[0] = ord(str(MESSAGE_TYPES['file_hash']))
+        
+        ## Write body
+        body = self.get_empty_body(body_byte_size=FILE_DATA_HASH_MESSAGE_BODY_SIZE)
+        # Write hash into the body
+        for hash_byte_val_idx in range(HASH_LENGTH):
+            body[hash_byte_val_idx] = hash[hash_byte_val_idx]
+        
+        # Write in crc at the end of the body
+        message_without_crc = np.concatenate((header, body), axis=None)
+        message_with_crc = append_crc_to_message(message_without_crc)
+        
         return message_with_crc
         
     def read_save_binary_data(self, path_to_file):
