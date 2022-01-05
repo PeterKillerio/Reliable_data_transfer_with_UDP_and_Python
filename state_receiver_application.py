@@ -14,9 +14,9 @@ path_to_server_file = 'C:/Users/peter/Desktop/CTU/Fifth_semester/KDS/cvut_kds_se
 DEBUG = False
 
 # Server IP
-UDP_IP = "127.0.0.1"
-UDP_RECEIVE_PORT =5011 #5011#5005
-UDP_SEND_PORT = 5012 #5012#5006
+UDP_IP = "192.168.30.15" # Target IP address of sender socket
+UDP_RECEIVE_PORT = 5005 #5011#5005
+UDP_SEND_PORT = 5006 #5012#5006
 print(f"UDP target IP: {UDP_IP}")
 print(f"UDP send port: {UDP_SEND_PORT}, UDP receive port: {UDP_RECEIVE_PORT}" )
 
@@ -26,6 +26,7 @@ receiver_states = {"file_request": 0, \
                 "file_start_transfer": 2, \
                 "file_start_transfer_wait": 3, \
                 "receiving_file_data": 4, \
+
                 "send_acknowledge_new": 5, \
                 "send_acknowledge_current": 6, \
                 "send_last_acknowledge": 7, \
@@ -41,7 +42,7 @@ sock_send = socket.socket(socket.AF_INET,
 sock_send.settimeout(SOCKET_TIMEOUT)
 sock_receive = socket.socket(socket.AF_INET, 
                     socket.SOCK_DGRAM) # UDP        
-sock_receive.bind((UDP_IP, UDP_RECEIVE_PORT))
+sock_receive.bind(("127.0.0.1", UDP_RECEIVE_PORT)) # Target IP address of receiver socket
 sock_receive.settimeout(SOCKET_TIMEOUT)
 
 # Create receiver application object

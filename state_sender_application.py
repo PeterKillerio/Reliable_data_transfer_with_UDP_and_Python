@@ -11,9 +11,9 @@ path_to_send_directory = 'sender_server_filesystem/'
 DEBUG = False
 
 # Client IP and connection constants
-UDP_IP = "127.0.0.1"
-UDP_RECEIVE_PORT = 5013 #5013#5006
-UDP_SEND_PORT = 5010 #5010#5005
+UDP_IP = "127.0.0.1" 
+UDP_RECEIVE_PORT = 5009 #5013#5006
+UDP_SEND_PORT = 5040 #5010#5005
 MAX_HASH_SENDS_COUNTER = 50
 
 # Establish a connection
@@ -21,7 +21,7 @@ print(f"UDP target IP: {UDP_IP}")
 print(f"UDP send port: {UDP_SEND_PORT}, UDP receive port: {UDP_RECEIVE_PORT}" )
 sock_receive = socket.socket(socket.AF_INET, 
                      socket.SOCK_DGRAM)
-sock_receive.bind((UDP_IP, UDP_RECEIVE_PORT))
+sock_receive.bind(("127.0.0.1", UDP_RECEIVE_PORT))
 sock_receive.settimeout(SOCKET_TIMEOUT)
 sock_send = socket.socket(socket.AF_INET, 
                      socket.SOCK_DGRAM)
