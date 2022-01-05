@@ -1,4 +1,7 @@
 # CTU_KDS_reliable_udp_file_transfer
+
+By Peter Basár and Matěj Kopecký 5.1.2022
+
 Semestral work for KDS class, python implementation of reliable file transfer in python.
 
 Current settings require that netderper is live on machine running state_sender_application.py
