@@ -9,15 +9,16 @@ import sys
 import select
 
 
-path_to_receiver_directory = 'receiver_client_filesystem/'
-path_to_server_file = 'C:/Users/peter/Desktop/CTU/Fifth_semester/KDS/cvut_kds_semestralni_projekt/python_implementation/v_2_miro_basic/git/CTU_KDS_reliable_udp_file_transfer/sender_server_filesystem/vir.mp4'#'example.jpg'
+path_to_receiver_directory = 'receiver_client_filesystem/' # *** PATH TO FILE DESTINATION ***
+path_to_server_file = 'C:/Users/peter/Documents/Personal/Projects/reliable_UDP_data_transfer/Reliable_data_transfer_with_UDP_and_Python/sender_server_filesystem/cat.jpg' ## 'C:/Users/.../example.jpg' # *** PATH TO FILE YOU WANT TO TRANSFER FROM THE SERVER ***
 DEBUG = False
 
-# Server IP
-UDP_IP = "192.168.30.15" # Target IP address of sender socket
-UDP_RECEIVE_PORT = 5005 #5011#5005
-UDP_SEND_PORT = 5006 #5012#5006
-print(f"UDP target IP: {UDP_IP}")
+# Client IP and connection constants
+UDP_SEND_IP = "127.0.0.1"  # *** IP ADDRESS TO SEND DATA TO ***
+UDP_RECEIVE_IP = "127.0.0.1"  # *** IP ADDRESS TO RECEIVE DATA FROM ***
+UDP_RECEIVE_PORT = 5040
+UDP_SEND_PORT = 5009 
+print(f"UDP target IP: {UDP_SEND_IP}")
 print(f"UDP send port: {UDP_SEND_PORT}, UDP receive port: {UDP_RECEIVE_PORT}" )
 
 # States
@@ -42,7 +43,7 @@ sock_send = socket.socket(socket.AF_INET,
 sock_send.settimeout(SOCKET_TIMEOUT)
 sock_receive = socket.socket(socket.AF_INET, 
                     socket.SOCK_DGRAM) # UDP        
-sock_receive.bind(("127.0.0.1", UDP_RECEIVE_PORT)) # Target IP address of receiver socket
+sock_receive.bind((UDP_RECEIVE_IP, UDP_RECEIVE_PORT)) # Target IP address of receiver socket
 sock_receive.settimeout(SOCKET_TIMEOUT)
 
 # Create receiver application object
@@ -64,7 +65,7 @@ while True:
         message = UDPFile.MESSAGE_check_file_exists() 
         # Send message 
         print("Sent file request message...")
-        sock_send.sendto(message, (UDP_IP, UDP_SEND_PORT))
+        sock_send.sendto(message, (UDP_SEND_IP, UDP_SEND_PORT))
         CURRENT_STATE = receiver_states["file_request_wait"]
         continue 
 
@@ -99,7 +100,7 @@ while True:
         message = UDPFile.MESSAGE_start_transfer()
         # Send the message
         print(f"Sending start transfer message:")
-        sock_send.sendto(message, (UDP_IP, UDP_SEND_PORT))
+        sock_send.sendto(message, (UDP_SEND_IP, UDP_SEND_PORT))
         print(f'Sent data of size: {len(message)} bytes')
         CURRENT_STATE = receiver_states["file_start_transfer_wait"]
 
@@ -195,7 +196,7 @@ while True:
 
         # Sent acknowledge with the transfer_window_idx we want next
         message = UDPFile.MESSAGE_acknowledge(True, transfer_window_idx)
-        sock_send.sendto(message, (UDP_IP, UDP_SEND_PORT))
+        sock_send.sendto(message, (UDP_SEND_IP, UDP_SEND_PORT))
         
         if writing_file: CURRENT_STATE = receiver_states["receiving_file_data"]
         else: CURRENT_STATE = receiver_states["send_last_acknowledge"]
@@ -205,7 +206,7 @@ while True:
     elif CURRENT_STATE == receiver_states["send_acknowledge_current"]:
         # Sent acknowledge with the transfer_window_idx we want next
         message = UDPFile.MESSAGE_acknowledge(False, transfer_window_idx)
-        sock_send.sendto(message, (UDP_IP, UDP_SEND_PORT))
+        sock_send.sendto(message, (UDP_SEND_IP, UDP_SEND_PORT))
         CURRENT_STATE = receiver_states["receiving_file_data"]
         
     elif CURRENT_STATE == receiver_states["send_last_acknowledge"]:
@@ -213,7 +214,7 @@ while True:
 
         # Sent acknowledge with the transfer_window_idx we want next
         message = UDPFile.MESSAGE_acknowledge(True, transfer_window_idx)
-        sock_send.sendto(message, (UDP_IP, UDP_SEND_PORT))
+        sock_send.sendto(message, (UDP_SEND_IP, UDP_SEND_PORT))
 
         CURRENT_STATE = receiver_states["waiting_for_hash"]
         continue

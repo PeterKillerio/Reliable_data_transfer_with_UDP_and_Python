@@ -7,21 +7,22 @@ from protocol_descriptors import PARSE_RETURNS
 from UDPFile_sender import UDPFile_sender
 import sys
 
-path_to_send_directory = 'sender_server_filesystem/'
+path_to_send_directory = 'sender_server_filesystem/' # *** PATH TO FILE SOURCE DIRECTORY ***
 DEBUG = False
 
 # Client IP and connection constants
-UDP_IP = "127.0.0.1" 
-UDP_RECEIVE_PORT = 5009 #5013#5006
-UDP_SEND_PORT = 5040 #5010#5005
+UDP_SEND_IP = "127.0.0.1"  # *** IP ADDRESS TO SEND DATA TO ***
+UDP_RECEIVE_IP = "127.0.0.1"  # *** IP ADDRESS TO RECEIVE DATA FROM ***
+UDP_RECEIVE_PORT = 5009 # *** PORT TO RECEIVE DATA FROM ***
+UDP_SEND_PORT = 5040 # *** PORT TO SEND DATA TO ***
 MAX_HASH_SENDS_COUNTER = 50
 
 # Establish a connection
-print(f"UDP target IP: {UDP_IP}")
+print(f"UDP target IP: {UDP_SEND_IP}")
 print(f"UDP send port: {UDP_SEND_PORT}, UDP receive port: {UDP_RECEIVE_PORT}" )
 sock_receive = socket.socket(socket.AF_INET, 
                      socket.SOCK_DGRAM)
-sock_receive.bind(("127.0.0.1", UDP_RECEIVE_PORT))
+sock_receive.bind((UDP_RECEIVE_IP, UDP_RECEIVE_PORT))
 sock_receive.settimeout(SOCKET_TIMEOUT)
 sock_send = socket.socket(socket.AF_INET, 
                      socket.SOCK_DGRAM)
@@ -89,7 +90,7 @@ while True:
         
         # Send message
         print(f'Sent data of size: {len(message)} bytes')
-        sock_send.sendto(message, (UDP_IP, UDP_SEND_PORT))
+        sock_send.sendto(message, (UDP_SEND_IP, UDP_SEND_PORT))
 
     elif CURRENT_STATE == sender_states["file_start_transfer_wait"]:
         # Wait for response
@@ -141,7 +142,7 @@ while True:
             print(f"last_transfer_successul: {last_transfer_successul},iter_start:iter_end: {iter_start}:{iter_end}, transfering: {transfering}, UDPFile.file_byte_size: {UDPFile.file_byte_size}")
         
         message = UDPFile.MESSAGE_file_data(body=UDPFile.file_data[iter_start:iter_end], transfer_window_idx=transfer_window_idx)
-        sock_send.sendto((message.astype(np.int8)).tobytes(), (UDP_IP, UDP_SEND_PORT))
+        sock_send.sendto((message.astype(np.int8)).tobytes(), (UDP_SEND_IP, UDP_SEND_PORT))
         CURRENT_STATE = sender_states["wait_for_acknowledge"]
         continue
 
@@ -189,7 +190,7 @@ while True:
         
         # Send message
         print(f'Sent data of size: {len(message)} bytes')
-        sock_send.sendto(message, (UDP_IP, UDP_SEND_PORT))
+        sock_send.sendto(message, (UDP_SEND_IP, UDP_SEND_PORT))
 
     elif CURRENT_STATE == sender_states["end_sender"]:
         print("Closing sender...")
